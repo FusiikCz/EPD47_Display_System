@@ -16,98 +16,141 @@ This system allows you to push text and image content from a central server to m
 
 The client runs on an ESP32S3 board connected to a LilyGo EPD47 (960×540) e-paper display.
 
-**Responsibilities:**
+**Client responsibilities:**
 
 - Connect to a WiFi network
 - Periodically request updates from the server
 - Render either text or JPEG images on the e-paper display
-- Show status info like connection and update state
+- Display device status and update timestamps
 
 ### Server
 
-A lightweight HTTP server that:
+The server component provides content updates to clients via HTTP.
 
-- Listens on port `3000`
-- Responds with content in JSON format for the display to render
+**Server responsibilities:**
 
-**JSON Format:**
+- Host an HTTP server on port `3000`
+- Provide content via a REST endpoint in JSON format
+- Support both text and image content
+
+**JSON Format Example:**
 
 ```json
 {
-  "type": "text" | "image",
-  "data": "String content or base64-encoded image"
-}
-
-Hardware Requirements
-ESP32S3 Development Board
-
-LilyGo EPD47 e-paper display (960×540 resolution)
-
-5V power supply for ESP32
-
-WiFi network with internet access (optional)
-
-Software Requirements
-Arduino IDE Settings
-Board: ESP32S3 Dev Module
-
-Flash Size: 16MB (128Mb)
-
-PSRAM: OPI PSRAM
-
-Required Libraries
-Install the following libraries via the Arduino Library Manager or include them manually:
-
-WiFi.h – Network connectivity
-
-HTTPClient.h – HTTP requests
-
-epd_driver.h – Display driver
-
-firasans.h – Font rendering
-
-JPEGDecoder.h – JPEG image decoding
-
-Installation
-Install the latest Arduino IDE.
-
-Install the ESP32 board package (via Boards Manager).
-
-Install the required libraries listed above.
-
-Clone or download this repository.
-
-Open the client/ project in Arduino IDE.
-
-Edit the WiFi and server configuration:
-
-const char *ssid = "YourNetworkName";
-const char *password = "YourPassword";
-const char *server_url = "http://your-server-address:3000/endpoint";
-
-Upload the code to your ESP32S3.
-
-Reboot the device to begin polling the server.
-
-Server API
-The server should provide a JSON response containing either text or image content.
-
-Example Response (Text):
-
-{
   "type": "text",
-  "data": "Hello from the server!"
+  "data": "Welcome to EPD47 Display System"
 }
-Example Response (Image):
+````
 
+```json
 {
   "type": "image",
-  "data": "/9j/4AAQSkZJRgABAQEAYABgAAD..." // Base64-encoded JPEG
+  "data": "base64-encoded JPEG string"
 }
-Project Structure
+```
 
-EPD47-Display-System/
-├── client/           # Arduino sketch and ESP32 code
-├── server/           # Node.js, Python, or other server implementation
-├── assets/           # Fonts, images, test content
-└── README.md
+-----
+
+## Hardware Requirements
+
+  * ESP32S3 development board
+  * LilyGo EPD47 e-paper display (960×540 pixels)
+  * 5V power supply for the ESP32 board
+  * WiFi access point (2.4 GHz)
+
+-----
+
+## Software Requirements
+
+### Arduino IDE Configuration
+
+Ensure the following settings in the Arduino IDE:
+
+  * **Board**: ESP32S3 Dev Module
+  * **Flash Size**: 16MB (128Mb)
+  * **PSRAM**: OPI PSRAM
+
+### Required Libraries
+
+Install these libraries via the Arduino Library Manager:
+
+  * `WiFi.h` - For network connectivity
+  * `HTTPClient.h` - For making HTTP requests
+  * `epd_driver.h` - For controlling the e-paper display
+  * `firasans.h` - For font rendering
+  * `JPEGDecoder.h` - For decoding JPEG images
+
+-----
+
+## Installation
+
+1.  Install the [Arduino IDE](https://www.arduino.cc/en/software).
+
+2.  Install the ESP32 board support via the Boards Manager.
+
+3.  Install all required libraries.
+
+4.  Clone this repository:
+
+    ```sh
+    git clone [https://github.com/yourusername/epd47-display-system.git](https://github.com/yourusername/epd47-display-system.git)
+    ```
+
+5.  Open the `client/` folder in Arduino IDE.
+
+6.  Edit the WiFi and server configuration:
+
+    ```cpp
+    const char *ssid = "YourNetworkName";
+    const char *password = "YourPassword";
+    const char *server_url = "http://your-server-address:3000/endpoint";
+    ```
+
+7.  Upload the sketch to your ESP32S3 board.
+
+8.  Power on the device and verify the display content.
+
+-----
+
+## Server API Specification
+
+The client polls the server for display updates. The server should respond with a JSON payload like the following:
+
+### Text Content Example
+
+```json
+{
+  "type": "text",
+  "data": "Now Showing: Meeting at 3 PM"
+}
+```
+
+### Image Content Example
+
+```json
+{
+  "type": "image",
+  "data": "/9j/4AAQSkZJRgABAQEASABIAAD..."
+}
+```
+
+-----
+
+## Directory Structure
+
+```
+epd47-display-system/
+├── client/           # ESP32 client code (Arduino sketch)
+├── server/           # Server code (Node.js or Python)
+├── assets/           # Sample images, fonts, or test files
+└── README.md         # Project documentation
+```
+
+-----
+
+## License
+
+This project is licensed under the MIT License.
+
+```
+```
