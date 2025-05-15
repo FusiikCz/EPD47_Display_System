@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <!-- Background -->
+  <rect width="960" height="540" fill="#ffffff"/>
+  
+  <!-- Title -->
+  <text x="480" y="80" font-family="Arial" font-size="40" text-anchor="middle" fill="#2c3e50">LilyGo EPD47 Display</text>
+  
+  <!-- Subtitle -->
+  <text x="480" y="130" font-family="Arial" font-size="24" text-anchor="middle" fill="#3498db">Sample Image for Testing</text>
+  
+  <!-- Display outline -->
+  <rect x="180" y="160" width="600" height="320" rx="10" ry="10" stroke="#34495e" stroke-width="4" fill="none"/>
+  
+  <!-- Display content -->
+  <text x="480" y="250" font-family="Arial" font-size="28" text-anchor="middle" fill="#2c3e50">E-Paper Display System</text>
+  <text x="480" y="300" font-family="Arial" font-size="20" text-anchor="middle" fill="#7f8c8d">960×540 pixels</text>
+  <text x="480" y="340" font-family="Arial" font-size="20" text-anchor="middle" fill="#7f8c8d">Low power consumption</text>
+  <text x="480" y="380" font-family="Arial" font-size="20" text-anchor="middle" fill="#7f8c8d">Wireless control</text>
+  
+  <!-- Current date -->
+  <text x="480" y="440" font-family="Arial" font-size="16" text-anchor="middle" fill="#95a5a6">Test Image - 2024</text>
+</svg>

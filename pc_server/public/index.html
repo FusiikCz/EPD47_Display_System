@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Paper Display Control</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        h2 {
+            color: #3498db;
+            margin-top: 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 120px;
+            resize: vertical;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .clear-btn {
+            background-color: #e74c3c;
+        }
+        .clear-btn:hover {
+            background-color: #c0392b;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+            font-size: 16px;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .image-preview {
+            max-width: 100%;
+            margin-top: 15px;
+            display: none;
+        }
+        #deviceForm {
+            margin-bottom: 30px;
+        }
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+            .card {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>E-Paper Display Control</h1>
+        
+        <div class="card" id="deviceForm">
+            <h2>Connect to ESP32</h2>
+            <form id="setDeviceForm">
+                <label for="deviceIP">ESP32 IP Address:</label>
+                <input type="text" id="deviceIP" placeholder="192.168.1.100" required>
+                <button type="submit">Connect</button>
+                <div id="deviceStatus" class="status"></div>
+            </form>
+        </div>
+        
+        <div class="card" id="deviceList">
+            <h2>Registered Devices</h2>
+            <p>Select a device to send content to:</p>
+            <div id="deviceListContent">
+                <p>No devices registered yet.</p>
+            </div>
+            <button id="refreshDevices">Refresh List</button>
+        </div>
+        
+        <div class="card">
+            <h2>Display Text</h2>
+            <form id="textForm">
+                <label for="displayText">Text to Display:</label>
+                <textarea id="displayText" placeholder="Enter text to display on the e-paper..." required></textarea>
+                
+                <div class="form-group">
+                    <label for="textSize">line spacing:</label>
+                    <select id="textSize">
+                        <option value="small">Malý spacing (více obsahu)</option>
+                        <option value="medium" selected>Střední spacing</option>
+                        <option value="large">Velký spacing (maximální čitelnost)</option>
+                    </select>
+                </div>
+                
+                <button type="submit">Send Text</button>
+                <div id="textStatus" class="status"></div>
+            </form>
+        </div>
+        
+        <div class="card">
+            <h2>Upload Image</h2>
+            <form id="imageForm" enctype="multipart/form-data">
+                <label for="displayImage">Image to Display (JPEG):</label>
+                <input type="file" id="displayImage" accept="image/jpeg" required>
+                <button type="submit">Send Image</button>
+                <div id="imageStatus" class="status"></div>
+                <img id="imagePreview" class="image-preview" alt="Preview">
+            </form>
+        </div>
+        
+        <div class="card">
+            <h2>Display Controls</h2>
+            <button id="clearDisplay" class="danger">Clear Screen</button>
+            <div id="clearStatus" class="status"></div>
+        </div>
+    </div>
+
+<!-- Replace your existing info box with this updated version -->
+<div class="info-box">
+  <h3>Supported Image Formats</h3>
+  <p>For best results with the e-paper display:</p>
+  <ul>
+    <li><strong>Formats:</strong> JPEG, PNG, BMP</li>
+    <li><strong>Resolution:</strong> Images will be automatically resized to fit the 540x960 display</li>
+    <li><strong>Aspect Ratio:</strong> Images will maintain their original aspect ratio with white padding if needed</li>
+    <li><strong>File Size:</strong> Keep under 5MB for faster processing</li>
+  </ul>
+  <p>Note: Images are automatically converted to grayscale with dithering for optimal display on e-paper.</p>
+</div>
+
+    <script>
+        // DOM elements
+        const setDeviceForm = document.getElementById('setDeviceForm');
+        const deviceStatus = document.getElementById('deviceStatus');
+        const textForm = document.getElementById('textForm');
+        const textStatus = document.getElementById('textStatus');
+        const imageForm = document.getElementById('imageForm');
+        const imageStatus = document.getElementById('imageStatus');
+        const imagePreview = document.getElementById('imagePreview');
+        const clearBtn = document.getElementById('clearBtn');
+        const clearStatus = document.getElementById('clearStatus');
+        const refreshDevicesBtn = document.getElementById('refreshDevices');
+        const deviceListContent = document.getElementById('deviceListContent');
+        
+        // Selected device tracking
+        let selectedDeviceIp = null;
+        
+        // Fetch and display registered devices
+        async function fetchDevices() {
+            try {
+                const response = await fetch('/devices');
+                const data = await response.json();
+                
+                const deviceListContent = document.getElementById('deviceListContent');
+                
+                if (data.devices && data.devices.length > 0) {
+                    let html = '<ul class="device-list">';
+                    
+                    data.devices.forEach(device => {
+                        const isActive = device.active ? ' active' : '';
+                        const isOnline = device.online ? '🟢 Online' : '⚫ Offline';
+                        
+                        html += `<li class="device${isActive}" data-ip="${device.ip}">
+                            <strong>${device.ip}</strong><br>
+                            <small>${isOnline}</small>
+                        </li>`;
+                    });
+                    
+                    html += '</ul>';
+                    html += '<p class="info-text">The active device (green border) is the default target for all operations.</p>';
+                    deviceListContent.innerHTML = html;
+                    
+                    // Add click event to select device
+                    document.querySelectorAll('.device-list li').forEach(item => {
+                        item.addEventListener('click', function() {
+                            const ip = this.getAttribute('data-ip');
+                            setActiveDevice(ip);
+                        });
+                    });
+                    
+                    // Set selectedDeviceIp to match the active device if one exists
+                    const activeDevice = document.querySelector('.device.active');
+                    if (activeDevice) {
+                        selectedDeviceIp = activeDevice.getAttribute('data-ip');
+                    }
+                } else {
+                    deviceListContent.innerHTML = '<p>No devices registered yet.</p>';
+                }
+            } catch (error) {
+                console.error('Error fetching devices:', error);
+            }
+        }
+        
+        // Initial device fetch
+        fetchDevices();
+        
+        // Refresh devices button
+        refreshDevicesBtn.addEventListener('click', fetchDevices);
+        
+        // Set device IP
+        setDeviceForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const ip = document.getElementById('deviceIP').value.trim();
+            
+            try {
+                const response = await fetch('/set-device', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ ip })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    deviceStatus.className = 'status success';
+                    deviceStatus.textContent = data.message;
+                    // Set as selected device
+                    selectedDeviceIp = ip;
+                    // Refresh device list
+                    fetchDevices();
+                } else {
+                    deviceStatus.className = 'status error';
+                    deviceStatus.textContent = data.error || 'Failed to set device IP';
+                }
+            } catch (error) {
+                deviceStatus.className = 'status error';
+                deviceStatus.textContent = 'Error connecting to server';
+                console.error('Error:', error);
+            }
+        });
+        
+        // Send text to display
+        textForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = document.getElementById('displayText').value;
+            const textSize = document.getElementById('textSize').value;
+            const deviceIp = selectedDeviceIp;
+            
+            if (!deviceIp) {
+                showStatus(textStatus, 'Please select a device first', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/send-text', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text, textSize, deviceIp })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showStatus(textStatus, data.message, 'success');
+                } else {
+                    showStatus(textStatus, data.error, 'error');
+                }
+            } catch (error) {
+                showStatus(textStatus, 'Error sending text: ' + error.message, 'error');
+            }
+        });
+        
+        // Preview and send image
+        document.getElementById('displayImage').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    imagePreview.style.display = 'block';
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        imageForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const imageFile = document.getElementById('displayImage').files[0];
+            
+            if (!imageFile) {
+                imageStatus.className = 'status error';
+                imageStatus.textContent = 'Please select an image';
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('image', imageFile);
+            // Include selected device IP if available
+            if (selectedDeviceIp) {
+                formData.append('deviceIp', selectedDeviceIp);
+            }
+            
+            try {
+                const response = await fetch('/send-image', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    imageStatus.className = 'status success';
+                    imageStatus.textContent = data.message;
+                } else {
+                    imageStatus.className = 'status error';
+                    imageStatus.textContent = data.error || 'Failed to send image';
+                }
+            } catch (error) {
+                imageStatus.className = 'status error';
+                imageStatus.textContent = 'Error connecting to server';
+                console.error('Error:', error);
+            }
+        });
+        
+        // Clear display with confirmation
+        document.getElementById('clearDisplay').addEventListener('click', async () => {
+            const clearStatus = document.getElementById('clearStatus');
+            const deviceIp = selectedDeviceIp;
+            
+            if (!deviceIp) {
+                showStatus(clearStatus, 'Please select a device first', 'error');
+                return;
+            }
+            
+            // Show confirmation dialog
+            if (!confirm('Are you sure you want to clear the display?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/clear-display', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ deviceIp })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showStatus(clearStatus, data.message, 'success');
+                } else {
+                    showStatus(clearStatus, data.error, 'error');
+                }
+            } catch (error) {
+                showStatus(clearStatus, 'Error clearing display: ' + error.message, 'error');
+            }
+        });
+    </script>
+</body>
+</html>
+
+<style>
+.device-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.device-list li {
+    padding: 10px;
+    margin: 5px 0;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.device-list li:hover {
+    background-color: #e0e0e0;
+}
+
+.device-list li.selected {
+    background-color: #d0d0d0;
+    font-weight: bold;
+}
+
+.device-list li.active {
+    border-left: 4px solid #4CAF50;
+    padding-left: 6px;
+}
+
+.danger {
+    background-color: #f44336;
+}
+
+.danger:hover {
+    background-color: #d32f2f;
+}
+
+.device-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.device-status {
+    font-size: 0.8em;
+    padding: 2px 6px;
+    border-radius: 10px;
+}
+
+.device-status.online {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.device-status.offline {
+    background-color: #f44336;
+    color: white;
+}
+
+.device-details {
+    font-size: 0.8em;
+    color: #666;
+    margin-top: 5px;
+}
+.device-list li small {
+    font-size: 12px;
+    color: #666;
+}
+</style>
