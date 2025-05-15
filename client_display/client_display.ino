@@ -3,8 +3,6 @@
 #include <Arduino.h>
 #include "epd_driver.h"
 #include "firasans.h"
-// Include your new Czech-supporting font
-#include "czech_font.h"  // You'll need to create or obtain this file
 #include "JPEGDecoder.h"
 
 const char *ssid = "Zdenalovo";
@@ -31,8 +29,7 @@ void updateStatusMessage(const char* message) {
   epd_poweron();
   epd_clear_area(statusArea);
   int32_t x = statusArea.x + 10, y = statusArea.y + 30;
-  // Use the Czech font instead of FiraSans
-  writeln((GFXfont *)&CzechFont, message, &x, &y, NULL);
+  writeln((GFXfont *)&FiraSans, message, &x, &y, NULL);
   epd_poweroff();
 }
 
@@ -79,8 +76,7 @@ void displayTextOnScreen(String text, String textSize) {
     int32_t x = mainArea.x + 20;
     int32_t y = mainArea.y + 40 + (currentLine * lineSpacing);
     
-    // Use the Czech font instead of FiraSans
-    writeln((GFXfont *)&CzechFont, line.c_str(), &x, &y, NULL);
+    writeln((GFXfont *)&FiraSans, line.c_str(), &x, &y, NULL);
     currentLine++;
   }
 
