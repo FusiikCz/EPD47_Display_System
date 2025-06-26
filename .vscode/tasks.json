@@ -1,0 +1,17 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "npm",
+			"script": "install",
+			"path": "EPD47_Display_System/pc_server",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"problemMatcher": [],
+			"label": "npm: install - EPD47_Display_System/pc_server",
+			"detail": "install dependencies from package"
+		}
+	]
+}

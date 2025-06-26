@@ -6,6 +6,12 @@
  * to the ESP32 device.
  */
 
+//to-do
+//So i noticed based on the print on the display we dont have the auto new line starting for example i tried putting lorem ipsum 
+// and it just have one line instead of the whole few lines on one character there is space for like 48 characters. 
+// We can make it 45 just to be sure and figure out the very last line where the commands are said like: "obrazovka vymazána"
+
+
 const express = require('express');
 const multer = require('multer');
 const cors = require('cors');
@@ -49,6 +55,7 @@ const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png']; // Allowed image types
 const EPD_WIDTH = 960; // E-paper display width
 const EPD_HEIGHT = 540; // E-paper display height (including status area)
 const MAIN_AREA_HEIGHT = 480; // Main display area height
+const MAX_CHARS_PER_LINE = 45; // Maximum characters per line for text wrapping
 
 // Device status tracking
 let deviceStatus = {};
@@ -192,6 +199,49 @@ app.post('/set-device', (req, res) => {
   res.json({ success: true, message: `Device IP set to ${espDeviceIP}` });
 });
 
+// Helper function to wrap text at specified character count
+function wrapText(text, maxCharsPerLine) {
+  if (!text) return '';
+  
+  // First split by manual newlines
+  const paragraphs = text.split('\n');
+  const wrappedParagraphs = [];
+  
+  for (const paragraph of paragraphs) {
+    if (paragraph.length <= maxCharsPerLine) {
+      // Paragraph fits on one line
+      wrappedParagraphs.push(paragraph);
+    } else {
+      // Need to wrap this paragraph
+      let remainingText = paragraph;
+      while (remainingText.length > 0) {
+        if (remainingText.length <= maxCharsPerLine) {
+          // Last piece fits on one line
+          wrappedParagraphs.push(remainingText);
+          break;
+        }
+        
+        // Look for a space to break at
+        let breakPos = maxCharsPerLine;
+        while (breakPos > 0 && remainingText.charAt(breakPos) !== ' ') {
+          breakPos--;
+        }
+        
+        // If no space found, force break at maxCharsPerLine
+        if (breakPos === 0) {
+          breakPos = maxCharsPerLine;
+        }
+        
+        wrappedParagraphs.push(remainingText.substring(0, breakPos));
+        // Skip the space when starting the next line
+        remainingText = remainingText.substring(breakPos + 1);
+      }
+    }
+  }
+  
+  return wrappedParagraphs.join('\n');
+}
+
 // Send text to ESP32
 app.post('/send-text', async (req, res) => {
   const { text, deviceIp, textSize } = req.body;
@@ -218,6 +268,18 @@ app.post('/send-text', async (req, res) => {
     return res.status(400).json({ error: 'Invalid IP address format' });
   }
   
+  // Apply text wrapping based on text size
+  let maxChars = MAX_CHARS_PER_LINE; // Default for medium text
+  if (textSize === 'small') {
+    maxChars = 55; // More characters fit on a line with smaller font
+  } else if (textSize === 'large') {
+    maxChars = 35; // Fewer characters fit on a line with larger font
+  }
+  
+  // Wrap the text before sending
+  const wrappedText = wrapText(text, maxChars);
+  console.log(`Original text length: ${text.length}, wrapped text length: ${wrappedText.length}`);
+  
   // Add to content queue if device is registered
   if (registeredDevices.includes(targetIp)) {
     if (!contentQueue[targetIp]) {
@@ -226,7 +288,7 @@ app.post('/send-text', async (req, res) => {
     
     contentQueue[targetIp].push({
       type: 'text',
-      data: text,
+      data: wrappedText,
       textSize: textSize || 'medium' // Default to medium if not specified
     });
     
