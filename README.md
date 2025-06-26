@@ -93,7 +93,7 @@ Install these libraries via the Arduino Library Manager:
 4.  Clone this repository:
 
     ```sh
-    git clone [https://github.com/yourusername/epd47-display-system.git](https://github.com/yourusername/epd47-display-system.git)
+    git clone [https://https://github.com/FusiikCz/EPD47_Display_System.git](https://https://github.com/FusiikCz/EPD47_Display_System.git)
     ```
 
 5.  Open the `client/` folder in Arduino IDE.
