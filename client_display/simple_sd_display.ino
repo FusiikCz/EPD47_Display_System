@@ -5,9 +5,15 @@
 #include "firasans.h"
 
 // Tlačítka
-#define PIN_NEXT_BTN 33
-#define PIN_PREV_BTN 32
+#define PIN_NEXT_BTN 39
+#define PIN_PREV_BTN 45
 #define BUTTON_DEBOUNCE_MS 100
+
+// Button state tracking
+bool lastNextButtonState = HIGH;
+bool lastPrevButtonState = HIGH;
+unsigned long lastNextButtonTime = 0;
+unsigned long lastPrevButtonTime = 0;
 
 // Volba zdroje obrázků
 #define USE_EMBEDDED_IMAGES false  // true = obrázky v kódu, false = SD karta
@@ -178,7 +184,7 @@ bool loadImageToFramebuffer(const char *filename) {
 
 void displayCurrentImage() {
     epd_poweron();
-    epd_clear();
+    epd_clear(); // Clear display to prevent overlapping
 
 #if USE_EMBEDDED_IMAGES
     if (loadImageToFramebuffer(nullptr)) {
@@ -196,6 +202,7 @@ void displayCurrentImage() {
     }
 
     epd_poweroff();
+    delay(100); // Small delay to let display settle
 }
 
 void displayNoImagesMessage() {
@@ -220,6 +227,12 @@ void setup() {
     Serial.println("Inicializace EPD...");
     epd_init();
     Serial.println("After epd_init()");
+    
+    // Clean display on bootup
+    epd_poweron();
+    epd_clear();
+    epd_poweroff();
+    Serial.println("Display cleared on bootup");
 
     if (!psramFound()) {
         Serial.println("Chyba: PSRAM nenalezena!");
@@ -264,20 +277,22 @@ void setup() {
 #endif
 
     if (imageCount > 0) {
-        // Display current image and go to sleep
+        // Show current image, then go to deep sleep
         displayCurrentImage();
         Serial.printf("Displayed image %d: %s\n", currentImageIndex, imageFiles[currentImageIndex].c_str());
+        Serial.println("Going to sleep - press button to wake up");
+        
+        // Enable wakeup on button press
+        esp_sleep_enable_ext1_wakeup((1ULL << PIN_NEXT_BTN) | (1ULL << PIN_PREV_BTN), ESP_EXT1_WAKEUP_ANY_LOW);
+        
+        Serial.println("Hotovo. Uspávám...");
+        delay(1000);
+        esp_deep_sleep_start();
     } else {
         displayNoImagesMessage();
         Serial.println("No images found, displayed message.");
+        delay(10000);
     }
-
-    // Enable button wakeup for navigation
-    esp_sleep_enable_ext1_wakeup((1ULL << PIN_NEXT_BTN) | (1ULL << PIN_PREV_BTN), ESP_EXT1_WAKEUP_ANY_LOW);
-
-    Serial.println("Hotovo. Uspávám...");
-    delay(1000);
-    esp_deep_sleep_start();
 }
 
 void loop() {
