@@ -6,15 +6,8 @@
 
 // Tlačítka
 #define PIN_NEXT_BTN 47
-#define PIN_PREV_BTN 17
-
+#define PIN_PREV_BTN 48
 #define BUTTON_DEBOUNCE_MS 100
-
-// Button state tracking
-bool lastNextButtonState = HIGH;
-bool lastPrevButtonState = HIGH;
-unsigned long lastNextButtonTime = 0;
-unsigned long lastPrevButtonTime = 0;
 
 // Volba zdroje obrázků
 #define USE_EMBEDDED_IMAGES false  // true = obrázky v kódu, false = SD karta
@@ -35,6 +28,12 @@ String imageFiles[MAX_IMAGE_COUNT];
 int imageCount = 0;
 int currentImageIndex = 0;
 
+// Button state tracking
+bool lastNextButtonState = HIGH;
+bool lastPrevButtonState = HIGH;
+unsigned long lastNextButtonTime = 0;
+unsigned long lastPrevButtonTime = 0;
+
 #if USE_EMBEDDED_IMAGES
 const uint8_t image1[] PROGMEM = {
   // testovací obsah
@@ -47,30 +46,6 @@ const uint8_t image2[] PROGMEM = {
 const uint8_t* embeddedImages[] = {image1, image2};
 const int embeddedImageCount = sizeof(embeddedImages) / sizeof(embeddedImages[0]);
 #endif
-
-void handleWakeup() {
-    esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
-
-    if (wakeup_reason == ESP_SLEEP_WAKEUP_EXT1 && imageCount > 0) {
-        uint64_t wakeup_pin_mask = esp_sleep_get_ext1_wakeup_status();
-
-        // Both buttons pressed: re-scan SD card for new images
-        if ((wakeup_pin_mask & (1ULL << PIN_NEXT_BTN)) && (wakeup_pin_mask & (1ULL << PIN_PREV_BTN))) {
-            Serial.println("Obě tlačítka stisknuta: obnovuji seznam obrázků ze SD karty...");
-            loadImageList();
-            currentImageIndex = 0;
-            delay(BUTTON_DEBOUNCE_MS);
-        } else if (wakeup_pin_mask & (1ULL << PIN_NEXT_BTN)) {
-            currentImageIndex = (currentImageIndex + 1) % imageCount;
-            Serial.println("Next button pressed");
-            delay(BUTTON_DEBOUNCE_MS);
-        } else if (wakeup_pin_mask & (1ULL << PIN_PREV_BTN)) {
-            currentImageIndex = (currentImageIndex - 1 + imageCount) % imageCount;
-            Serial.println("Previous button pressed");
-            delay(BUTTON_DEBOUNCE_MS);
-        }
-    }
-}
 
 void loadImageList() {
     File root = SD.open(IMAGE_FOLDER);
@@ -222,11 +197,6 @@ void displayNoImagesMessage() {
 void setup() {
     Serial.begin(115200);
     Serial.println("Hello, ESP32!");
-//dočasné
-    Serial.printf("Next button pin: GPIO%d\n", PIN_NEXT_BTN);
-    Serial.printf("Prev button pin: GPIO%d\n", PIN_PREV_BTN);
-
-    // handleWakeup(); // Removed - no deep sleep
 
     Serial.println("Inicializace EPD...");
     epd_init();
@@ -283,44 +253,49 @@ void setup() {
 
 void loop() {
     if (imageCount > 0) {
-        // Show current image
-        displayCurrentImage();
-        Serial.printf("Displayed image %d: %s\n", currentImageIndex, imageFiles[currentImageIndex].c_str());
-        
-        // Wait for button press
+        // Continuous loop with button navigation
         while (true) {
-            // Check for button presses
-            bool currentNextButtonState = digitalRead(PIN_NEXT_BTN);
-            bool currentPrevButtonState = digitalRead(PIN_PREV_BTN);
-            unsigned long currentTime = millis();
+            displayCurrentImage();
+            Serial.printf("Displayed image %d: %s\n", currentImageIndex, imageFiles[currentImageIndex].c_str());
             
-            // Next button pressed (LOW = pressed due to INPUT_PULLUP)
-            if (currentNextButtonState == LOW && lastNextButtonState == HIGH && 
-                (currentTime - lastNextButtonTime) > BUTTON_DEBOUNCE_MS) {
-                lastNextButtonTime = currentTime;
-                currentImageIndex = (currentImageIndex + 1) % imageCount;
-                Serial.printf("Next button pressed - switching to image %d: %s\n", currentImageIndex, imageFiles[currentImageIndex].c_str());
-                break; // Exit the wait loop to show new image
+            // Wait for button press or timeout
+            unsigned long startTime = millis();
+            bool imageChanged = false;
+            
+            while (millis() - startTime < 10000 && !imageChanged) {
+                // Check for button presses
+                bool currentNextButtonState = digitalRead(PIN_NEXT_BTN);
+                bool currentPrevButtonState = digitalRead(PIN_PREV_BTN);
+                unsigned long currentTime = millis();
+                
+                // Next button pressed (LOW = pressed due to INPUT_PULLUP)
+                if (currentNextButtonState == LOW && lastNextButtonState == HIGH && 
+                    (currentTime - lastNextButtonTime) > BUTTON_DEBOUNCE_MS) {
+                    lastNextButtonTime = currentTime;
+                    currentImageIndex = (currentImageIndex + 1) % imageCount;
+                    Serial.printf("Next button pressed - showing image %d: %s\n", currentImageIndex, imageFiles[currentImageIndex].c_str());
+                    imageChanged = true;
+                }
+                
+                // Previous button pressed
+                if (currentPrevButtonState == LOW && lastPrevButtonState == HIGH && 
+                    (currentTime - lastPrevButtonTime) > BUTTON_DEBOUNCE_MS) {
+                    lastPrevButtonTime = currentTime;
+                    currentImageIndex = (currentImageIndex - 1 + imageCount) % imageCount;
+                    Serial.printf("Prev button pressed - showing image %d: %s\n", currentImageIndex, imageFiles[currentImageIndex].c_str());
+                    imageChanged = true;
+                }
+                
+                // Update button states
+                lastNextButtonState = currentNextButtonState;
+                lastPrevButtonState = currentPrevButtonState;
+                
+                delay(10); // Short delay for responsive button detection
             }
-            
-            // Previous button pressed
-            if (currentPrevButtonState == LOW && lastPrevButtonState == HIGH && 
-                (currentTime - lastPrevButtonTime) > BUTTON_DEBOUNCE_MS) {
-                lastPrevButtonTime = currentTime;
-                currentImageIndex = (currentImageIndex - 1 + imageCount) % imageCount;
-                Serial.printf("Prev button pressed - switching to image %d: %s\n", currentImageIndex, imageFiles[currentImageIndex].c_str());
-                break; // Exit the wait loop to show new image
-            }
-            
-            // Update button states
-            lastNextButtonState = currentNextButtonState;
-            lastPrevButtonState = currentPrevButtonState;
-            
-            delay(10); // Short delay for responsive button detection
         }
     } else {
         displayNoImagesMessage();
         Serial.println("No images found, displayed message.");
         delay(10000);
     }
-}
+} 
