@@ -286,5 +286,29 @@ Klíčová nastavení v `simple_sd_display.ino`:
 - `SD_CS_PIN 42`: Pin pro chip select SD karty
 - `IMAGE_FOLDER "/images"`: Složka obsahující obrázky
 - `MAX_IMAGE_COUNT 10`: Maximální počet obrázků
-- `PIN_NEXT_BTN 33`: Pin pro tlačítko "další"
-- `PIN_PREV_BTN 32`: Pin pro tlačítko "předchozí"
+- `PIN_NEXT_BTN 47`: Pin pro tlačítko "další"
+- `PIN_PREV_BTN 17`: Pin pro tlačítko "předchozí"
+
+# Low Power Deep Sleep Image Viewer (Ultra-Low Standby)
+
+This mode allows your ESP32-S3 to consume <0.017mW in standby by using deep sleep and RTC wakeup on the navigation buttons.
+
+## How it works
+- Device is in deep sleep (ultra-low power)
+- Pressing NEXT (GPIO47) or PREV (GPIO17) wakes the device
+- The device shows the next/previous image, then immediately returns to deep sleep
+- The current image index is preserved using RTC memory
+
+## Wiring for Deep Sleep Mode
+- NEXT button: GPIO47 → GND (use INPUT_PULLUP)
+- PREV button: GPIO17 → GND (use INPUT_PULLUP)
+
+## Tips
+- Use only RTC-capable pins for wakeup (GPIO47 and GPIO17 are safe on ESP32-S3)
+- The device will always sleep unless a button is pressed
+- The display will show the image until the next wakeup (E-Paper retains image with zero power)
+
+## Troubleshooting
+- If wakeup does not work, check that your buttons are wired to RTC-capable pins and use INPUT_PULLUP
+- If the image index resets, ensure you use `RTC_DATA_ATTR` for the index variable
+- If you want to add a short delay before sleep (to keep the display on for a moment), add `delay(2000);` before `esp_deep_sleep_start();`
